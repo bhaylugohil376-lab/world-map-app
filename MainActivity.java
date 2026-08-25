@@ -33,6 +33,5 @@ public class MainActivity extends AppCompatActivity
 
         googleMap.getUiSettings().setZoomControlsEnabled(true);
         googleMap.getUiSettings().setCompassEnabled(true);
-        googleMap.getUiSettings().setMapToolbarEnabled(true);
     }
 }
