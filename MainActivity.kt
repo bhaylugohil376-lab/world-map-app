@@ -7,7 +7,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 import org.osmdroid.config.Configuration
@@ -19,19 +19,19 @@ import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
 
 class MainActivity : ComponentActivity() {
 
-    private lateinit var mapView: MapView
+    private lateinit var map: MapView
 
-    private val locationPermission =
+    private val permissionLauncher =
         registerForActivityResult(
             ActivityResultContracts.RequestMultiplePermissions()
         ) { permissions ->
 
-            val granted =
+            val locationAllowed =
                 permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
                 permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
 
-            if (granted) {
-                showMyLocation()
+            if (locationAllowed) {
+                enableLocation()
             }
         }
 
@@ -39,45 +39,31 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         Configuration.getInstance().load(
-            this,
+            applicationContext,
             getSharedPreferences("world_map", MODE_PRIVATE)
         )
 
-        Configuration.getInstance().userAgentValue = packageName
+        Configuration.getInstance().userAgentValue =
+            "WorldMap/1.0"
 
-        mapView = MapView(this).apply {
+        map = MapView(this)
 
-            setTileSource(TileSourceFactory.MAPNIK)
+        map.setTileSource(TileSourceFactory.MAPNIK)
+        map.setMultiTouchControls(true)
 
-            setMultiTouchControls(true)
-
-            controller.setZoom(4.5)
-
-            // World view
-            controller.setCenter(
-                GeoPoint(20.0, 0.0)
-            )
-        }
+        // World starting position
+        map.controller.setZoom(3.5)
+        map.controller.setCenter(
+            GeoPoint(20.0, 0.0)
+        )
 
         setContent {
-
             MaterialTheme {
-
-                Surface(
-                    modifier = Modifier.fillMaxSize()
-                ) {
-
-                    AndroidView(
-                        factory = {
-                            mapView
-                        },
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
+                WorldMapView(map)
             }
         }
 
-        locationPermission.launch(
+        permissionLauncher.launch(
             arrayOf(
                 Manifest.permission.ACCESS_FINE_LOCATION,
                 Manifest.permission.ACCESS_COARSE_LOCATION
@@ -85,29 +71,37 @@ class MainActivity : ComponentActivity() {
         )
     }
 
-    private fun showMyLocation() {
+    private fun enableLocation() {
 
         val locationOverlay =
             MyLocationNewOverlay(
                 GpsMyLocationProvider(this),
-                mapView
+                map
             )
 
         locationOverlay.enableMyLocation()
-        locationOverlay.enableFollowLocation()
 
-        mapView.overlays.add(locationOverlay)
+        map.overlays.add(locationOverlay)
 
-        mapView.invalidate()
+        map.invalidate()
     }
 
     override fun onResume() {
         super.onResume()
-        mapView.onResume()
+        map.onResume()
     }
 
     override fun onPause() {
+        map.onPause()
         super.onPause()
-        mapView.onPause()
     }
+}
+
+@Composable
+fun WorldMapView(map: MapView) {
+
+    AndroidView(
+        factory = { map },
+        modifier = Modifier.fillMaxSize()
+    )
 }
